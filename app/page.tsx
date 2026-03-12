@@ -1,34 +1,70 @@
-import { PrismaClient } from "@prisma/client";
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Plus, Lock, Pill } from "lucide-react";
+import { AlertTriangle, Plus, Lock, Pill, Settings } from "lucide-react";
 
-const prisma = new PrismaClient();
+interface User {
+  id: string;
+  isPremium: boolean;
+}
 
-export default async function DashboardPage() {
-  let user = await prisma.user.findFirst();
-  if (!user) {
-    user = await prisma.user.create({
-      data: {
-        email: "admin@local.test",
-        name: "Admin",
-        isPremium: false
+interface Record {
+  id: string;
+  status: string;
+  detectedInfo: any;
+}
+
+export default function DashboardPage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [records, setRecords] = useState<Record[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchData = async () => {
+    try {
+      const response = await fetch("/api/user/data");
+      const data = await response.json();
+      if (data.success) {
+        setUser(data.user);
+        setRecords(data.records);
       }
-    });
-  }
+    } catch (error) {
+      console.error("Lỗi tải dữ liệu", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const records = await prisma.drugRecord.findMany({
-    where: { userId: user.id },
-    orderBy: { scannedAt: "desc" }
-  });
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const togglePremium = async () => {
+    try {
+      const response = await fetch("/api/user/premium", { method: "POST" });
+      const data = await response.json();
+      if (data.success && user) {
+        setUser({ ...user, isPremium: data.isPremium });
+      }
+    } catch (error) {
+      console.error("Lỗi cập nhật Premium", error);
+    }
+  };
+
+  if (isLoading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-sans font-bold text-slate-500">Đang tải dữ liệu...</div>;
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans">
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-2xl mx-auto space-y-6 relative">
+        <button onClick={togglePremium} className="absolute -top-4 -right-2 p-2 text-slate-300 hover:text-slate-600 transition-colors" title="Toggle Premium (Dev Only)">
+           <Settings className="w-5 h-5" />
+        </button>
+
         <div className="flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Tủ thuốc của tôi</h1>
             <p className="text-slate-500 font-medium mt-1">
-              Trạng thái: {user.isPremium ? <span className="text-blue-600 font-bold">Premium</span> : <span className="text-slate-500 font-bold">Cơ bản</span>}
+              Trạng thái: {user?.isPremium ? <span className="text-blue-600 font-bold">Premium</span> : <span className="text-slate-500 font-bold">Cơ bản</span>}
             </p>
           </div>
           <Link href="/scan" className="bg-blue-600 text-white p-4 rounded-2xl shadow-md hover:bg-blue-700 transition-colors">
@@ -36,7 +72,7 @@ export default async function DashboardPage() {
           </Link>
         </div>
 
-        {!user.isPremium && (
+        {!user?.isPremium && (
           <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 rounded-3xl shadow-md text-white flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold flex items-center gap-2">
@@ -75,14 +111,14 @@ export default async function DashboardPage() {
                     <p className="text-slate-800 font-medium text-sm">{info.usage}</p>
                   </div>
 
-                  {info.warnings && user.isPremium && (
+                  {info.warnings && user?.isPremium && (
                     <div className="flex gap-2 items-start bg-amber-50 p-3 rounded-xl border border-amber-100">
-                      <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                      <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                       <p className="text-amber-800 text-sm font-medium">{info.warnings}</p>
                     </div>
                   )}
 
-                  {info.warnings && !user.isPremium && (
+                  {info.warnings && !user?.isPremium && (
                     <div className="flex gap-2 items-center justify-center bg-slate-100 p-3 rounded-xl border border-slate-200 blur-[1px] select-none">
                       <Lock className="w-4 h-4 text-slate-400" />
                       <p className="text-slate-500 text-sm font-bold">Tính năng Premium</p>
