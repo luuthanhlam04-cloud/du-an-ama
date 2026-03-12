@@ -1,101 +1,158 @@
-import Image from "next/image";
+// app/page.tsx
+"use client";
+
+import { useState, useRef } from 'react';
+import dynamic from 'next/dynamic';
+import { Mic, Send, Camera, AlertTriangle, MapPin, Pill, Loader2 } from 'lucide-react';
+
+// Import động component Map để tránh lỗi SSR của Next.js
+const Map = dynamic(() => import('@/components/Map'), { ssr: false, loading: () => <p className="text-center p-4">Đang tải bản đồ...</p> });
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [inputText, setInputText] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const [result, setResult] = useState<React.ReactNode | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // Xử lý tìm kiếm bằng giọng nói
+  const handleVoiceSearch = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert("Trình duyệt của bạn không hỗ trợ nhận diện giọng nói.");
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'vi-VN';
+
+    setIsListening(true);
+    recognition.start();
+
+    recognition.onresult = (event: any) => {
+      setInputText(event.results[0][0].transcript);
+      setIsListening(false);
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+      alert("Không nghe rõ, vui lòng thử lại!");
+    };
+  };
+
+  // Xử lý gửi tin nhắn text
+  const handleSend = () => {
+    if (!inputText.trim()) return;
+    
+    setResult(<div className="flex items-center gap-2 text-blue-600"><Loader2 className="animate-spin" /> Đang tra cứu tương tác cho: {inputText}...</div>);
+    
+    // Giả lập độ trễ API 1.5s
+    setTimeout(() => {
+      setResult(
+        <div>
+          <strong className="text-red-600 flex items-center gap-2 text-lg"><AlertTriangle /> Cảnh báo tương tác:</strong>
+          <p className="mt-2 text-gray-700 text-lg">Nếu bạn đang uống <b>{inputText}</b>, KHÔNG nên sử dụng đồ uống có cồn. <span className="text-red-600 font-bold">Mức độ: Cao</span>.</p>
         </div>
+      );
+      setInputText("");
+    }, 1500);
+  };
+
+  // Xử lý khi chọn/chụp ảnh
+  const handleImageCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setResult(<div className="flex items-center gap-2 text-blue-600"><Loader2 className="animate-spin" /> Đang nhờ AI phân tích vỉ thuốc...</div>);
+      
+      // Giả lập độ trễ nhận diện OCR từ AI [cite: 200]
+      setTimeout(() => {
+        setResult(
+          <div className="text-lg text-gray-800">
+            <strong className="text-blue-600 text-xl block mb-2">Kết quả quét:</strong>
+            <p>💊 <b>Tên thuốc:</b> Panadol</p>
+            <p>📋 <b>Công dụng:</b> Giảm đau, hạ sốt</p>
+            <p>📅 <b>Tình trạng:</b> <span className="text-green-600 font-bold">Còn hạn sử dụng</span></p>
+            <p className="italic text-gray-500 text-sm mt-3">* Đã tự động lưu vào Tủ thuốc gia đình.</p>
+          </div>
+        );
+      }, 2000);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-gray-900 font-sans pb-10">
+      {/* Header */}
+      <header className="bg-blue-600 text-white p-5 text-center shadow-md rounded-b-3xl">
+        <h1 className="text-2xl font-bold flex items-center justify-center gap-2">
+          <Pill size={28} /> Tủ Thuốc Gia Đình
+        </h1>
+        <p className="text-blue-100 text-sm mt-1">Trợ lý y tế thông minh của bạn</p>
+      </header>
+
+      <main className="max-w-xl mx-auto mt-6 px-4 space-y-6">
+        
+        {/* Khu vực Nhập liệu & Công cụ */}
+        <section className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex gap-2">
+            <input 
+              type="text" 
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder="Nhập tên thuốc, triệu chứng..." 
+              className="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 text-lg focus:outline-none focus:border-blue-500 transition-colors"
+            />
+            <button 
+              onClick={handleVoiceSearch}
+              className={`p-4 rounded-xl transition-colors ${isListening ? 'bg-red-100 text-red-600' : 'bg-blue-50 text-blue-600'}`}
+              title="Tìm kiếm giọng nói"
+            >
+              {isListening ? <Loader2 className="animate-spin" size={24} /> : <Mic size={24} />}
+            </button>
+            <button 
+              onClick={handleSend}
+              className="bg-blue-600 text-white p-4 rounded-xl hover:bg-blue-700 transition-colors"
+            >
+              <Send size={24} />
+            </button>
+          </div>
+
+          <input 
+            type="file" 
+            accept="image/*" 
+            capture="environment" 
+            ref={fileInputRef} 
+            onChange={handleImageCapture}
+            className="hidden" 
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full mt-4 bg-emerald-50 text-emerald-700 border-2 border-emerald-200 p-4 rounded-xl text-lg font-semibold flex items-center justify-center gap-2 hover:bg-emerald-100 transition-colors"
+          >
+            <Camera size={26} /> Quét vỉ thuốc thông minh
+          </button>
+        </section>
+
+        {/* Khu vực Hiển thị Kết quả */}
+        {result && (
+          <section className="bg-amber-50 border-l-4 border-amber-400 p-5 rounded-r-xl shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {result}
+          </section>
+        )}
+
+        {/* Cảnh báo y tế */}
+        <p className="text-center text-red-500 font-medium text-sm px-4 flex items-center justify-center gap-1">
+          <AlertTriangle size={16} /> Chỉ mang tính tham khảo, không thay thế bác sĩ! [cite: 139]
+        </p>
+
+        {/* Khu vực Bản đồ */}
+        <section className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mt-8">
+          <h2 className="text-xl font-bold text-blue-800 mb-1 flex items-center gap-2">
+            <MapPin className="text-blue-600" /> Nhà thuốc gần bạn
+          </h2>
+          <p className="text-gray-500 mb-4">Các cơ sở đang có sẵn thuốc bạn cần tìm.</p>
+          <Map />
+        </section>
+
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
