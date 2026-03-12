@@ -14,12 +14,15 @@
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.4.2",
     "@supabase/supabase-js": "^2.98.0",
+    "browser-image-compression": "^2.0.2",
+    "framer-motion": "^12.36.0",
     "fuse.js": "^7.1.0",
     "lucide-react": "^0.577.0",
     "next": "14.2.35",
     "pg": "^8.20.0",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "react-webcam": "^7.2.0"
   },
   "devDependencies": {
     "@types/node": "^20.19.37",
