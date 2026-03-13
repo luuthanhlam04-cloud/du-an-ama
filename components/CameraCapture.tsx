@@ -18,7 +18,9 @@ export default function CameraCapture({ onCapture }: CameraCaptureProps) {
   }, []);
 
   const captureStream = useCallback(() => {
+    // Sửa đổi 1: Không cần cấu hình ở đây vì đã thêm ở thẻ Webcam
     const imageBase64 = webcamReference.current?.getScreenshot();
+    
     if (imageBase64) {
       fetch(imageBase64)
         .then((response) => response.blob())
@@ -55,7 +57,12 @@ export default function CameraCapture({ onCapture }: CameraCaptureProps) {
         audio={false}
         ref={webcamReference}
         screenshotFormat="image/jpeg"
-        videoConstraints={{ facingMode: "environment" }}
+        screenshotQuality={0.6} // Sửa đổi 2: Ép chất lượng ảnh xuống 60% để giảm dung lượng
+        videoConstraints={{ 
+          facingMode: "environment",
+          width: { ideal: 1280 }, // Sửa đổi 3: Giới hạn độ phân giải tối đa
+          height: { ideal: 720 }
+        }}
         onUserMediaError={handleUserMediaError}
         className="w-full h-[65vh] object-cover"
       />
