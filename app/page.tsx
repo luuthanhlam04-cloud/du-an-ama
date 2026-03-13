@@ -23,10 +23,11 @@ export default function DashboardPage() {
   const fetchData = async () => {
     try {
       const response = await fetch("/api/user/data");
+      if (!response.ok) throw new Error("API Error");
       const data = await response.json();
       if (data.success) {
         setUser(data.user);
-        setRecords(data.records);
+        setRecords(data.records || []);
       }
     } catch (error) {
       console.error("Lỗi tải dữ liệu", error);
@@ -43,8 +44,8 @@ export default function DashboardPage() {
     try {
       const response = await fetch("/api/user/premium", { method: "POST" });
       const data = await response.json();
-      if (data.success && user) {
-        setUser({ ...user, isPremium: data.isPremium });
+      if (data.success) {
+        setUser((prev) => prev ? { ...prev, isPremium: data.isPremium } : { id: "default", isPremium: data.isPremium });
       }
     } catch (error) {
       console.error("Lỗi cập nhật Premium", error);
@@ -80,7 +81,7 @@ export default function DashboardPage() {
               </h2>
               <p className="font-medium mt-1 opacity-90">Cảnh báo tương tác thuốc tự động</p>
             </div>
-            <button className="bg-white text-orange-600 px-4 py-2 rounded-xl font-bold shadow-sm hover:scale-105 transition-transform">
+            <button onClick={togglePremium} className="bg-white text-orange-600 px-4 py-2 rounded-xl font-bold shadow-sm hover:scale-105 transition-transform">
               Nâng cấp
             </button>
           </div>

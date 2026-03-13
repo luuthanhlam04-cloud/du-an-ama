@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import CameraCapture from "@/components/CameraCapture";
-import { compressImage } from "@/lib/image";
 import { motion } from "framer-motion";
 import { AlertTriangle, CheckCircle, Info, Loader2 } from "lucide-react";
 import { MedicineResult } from "@/types";
@@ -16,9 +15,8 @@ export default function ScanPage() {
     setIsProcessing(true);
     setError(null);
     try {
-      const compressedFile = await compressImage(file);
       const formData = new FormData();
-      formData.append("image", compressedFile);
+      formData.append("image", file);
 
       const response = await fetch("/api/ocr", {
         method: "POST",
