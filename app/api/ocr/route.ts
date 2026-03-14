@@ -66,3 +66,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }
+
+// Force Vercel to clear cache and use new API key
