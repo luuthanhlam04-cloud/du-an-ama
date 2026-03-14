@@ -1,79 +1,88 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import Webcam from "react-webcam";
-import { Camera, Upload } from "lucide-react";
-import { motion } from "framer-motion";
+import { useRef, useState, useEffect, useCallback } from "react";
+import { Camera } from "lucide-react";
 
 interface CameraCaptureProps {
   onCapture: (file: File) => void;
 }
 
 export default function CameraCapture({ onCapture }: CameraCaptureProps) {
-  const [hasError, setHasError] = useState(false);
-  const webcamReference = useRef<Webcam>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
-  const handleUserMediaError = useCallback(() => {
-    setHasError(true);
+  const startCamera = useCallback(async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }
+      });
+      setStream(mediaStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+    } catch (err) {
+      console.error("Camera access error:", err);
+    }
   }, []);
 
-  const captureStream = useCallback(() => {
-    // Sửa đổi 1: Không cần cấu hình ở đây vì đã thêm ở thẻ Webcam
-    const imageBase64 = webcamReference.current?.getScreenshot();
-    
-    if (imageBase64) {
-      fetch(imageBase64)
-        .then((response) => response.blob())
-        .then((blob) => {
-          const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
-          onCapture(file);
-        });
-    }
-  }, [onCapture]);
+  useEffect(() => {
+    startCamera();
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [startCamera]);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      onCapture(file);
+  const handleCapture = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
+            onCapture(file);
+          }
+        }, "image/jpeg", 0.7); // Nén ảnh mức 0.7 tại client để tránh timeout
+      }
     }
   };
 
-  if (hasError) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 bg-white rounded-3xl border-2 border-dashed border-slate-200 shadow-sm">
-        <Upload className="w-16 h-16 text-slate-300 mb-6" />
-        <p className="text-slate-600 mb-6 text-center font-medium">Trình duyệt từ chối quyền Camera hoặc thiếu HTTPS. Vui lòng tải ảnh lên.</p>
-        <label className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-semibold cursor-pointer hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg">
-          Chọn ảnh từ thiết bị
-          <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileUpload} />
-        </label>
-      </div>
-    );
-  }
-
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative rounded-3xl overflow-hidden bg-slate-900 shadow-2xl ring-1 ring-white/10">
-      <Webcam
-        audio={false}
-        ref={webcamReference}
-        screenshotFormat="image/jpeg"
-        screenshotQuality={0.6} // Sửa đổi 2: Ép chất lượng ảnh xuống 60% để giảm dung lượng
-        videoConstraints={{ 
-          facingMode: "environment",
-          width: { ideal: 1280 }, // Sửa đổi 3: Giới hạn độ phân giải tối đa
-          height: { ideal: 720 }
-        }}
-        onUserMediaError={handleUserMediaError}
-        className="w-full h-[65vh] object-cover"
+    <div className="relative w-full max-w-md mx-auto overflow-hidden rounded-3xl bg-black aspect-[4/5] shadow-inner">
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="object-cover w-full h-full"
       />
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-72 h-40 border-2 border-white/60 rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] backdrop-blur-[1px]"></div>
+      
+      {/* Lớp phủ làm tối không gian bên ngoài khung */}
+      <div className="absolute inset-0 z-10 pointer-events-none border-[50px] border-black/40"></div>
+
+      {/* Khung viền trắng xác định vùng lấy nét (không sử dụng blur) */}
+      <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+        <div className="w-64 h-32 border-2 border-white rounded-xl shadow-[0_0_15px_rgba(255,255,255,0.3)]"></div>
       </div>
-      <div className="absolute bottom-8 left-0 right-0 flex justify-center">
-        <button onClick={captureStream} className="bg-white text-slate-900 p-5 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:scale-105 active:scale-95 transition-all">
-          <Camera className="w-8 h-8" />
+
+      <div className="absolute bottom-6 left-0 right-0 z-30 flex justify-center">
+        <button
+          onClick={handleCapture}
+          className="p-4 bg-white rounded-full shadow-lg hover:scale-105 active:scale-95 transition-transform"
+        >
+          <Camera className="w-8 h-8 text-slate-800" />
         </button>
       </div>
-    </motion.div>
+
+      <canvas ref={canvasRef} className="hidden" />
+    </div>
   );
 }
