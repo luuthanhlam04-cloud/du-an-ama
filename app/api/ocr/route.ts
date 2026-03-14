@@ -1,18 +1,14 @@
 import { NextResponse } from "next/server";
 import { analyzeMedicineImage } from "@/lib/gemini";
 import { matchMedicine } from "@/lib/matcher";
-// Sửa đổi 1: Nên sử dụng Prisma Client dạng Singleton nếu đã tạo file lib/db.ts
-// import { db as prisma } from "@/lib/db"; 
 import { PrismaClient } from "@prisma/client";
 
-// Nếu chưa có file db.ts, dùng global để tránh tràn kết nối
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-// Sửa đổi 2: Ép Vercel cho phép hàm này chạy lâu hơn (tối đa 60 giây)
 export const maxDuration = 60; 
-export const dynamic = 'force-dynamic'; // Tắt cache cho endpoint này
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
@@ -27,7 +23,6 @@ export async function POST(request: Request) {
     const base64Image = buffer.toString("base64");
     const mimeType = file.type;
 
-    // Bọc trong try-catch riêng để debug nếu Gemini lỗi
     let geminiResult;
     try {
       geminiResult = await analyzeMedicineImage(base64Image, mimeType);
@@ -44,7 +39,7 @@ export async function POST(request: Request) {
         data: {
           email: "admin@local.test",
           name: "Admin",
-          // Đảm bảo schema của bạn có trường isPremium
+          isPremium: false
         }
       });
     }

@@ -4,7 +4,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
 
 export async function analyzeMedicineImage(base64Image: string, mimeType: string) {
   const response = await ai.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-1.5-flash-latest",
     contents: [
       {
         role: "user",
